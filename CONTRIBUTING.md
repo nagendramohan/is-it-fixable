@@ -6,7 +6,7 @@ built to be approachable.
 ## Getting started
 
 ```bash
-git clone https://github.com/OWNER/is-it-fixable.git
+git clone https://github.com/nagendramohan/is-it-fixable.git
 cd is-it-fixable
 npm install
 npm run check   # typecheck + lint + tests

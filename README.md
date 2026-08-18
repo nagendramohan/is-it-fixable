@@ -8,7 +8,7 @@ and shows you the **evidence** behind the verdict — so you don't fork a repo, 
 read the code only to discover the bug was already fixed, the PR already exists, or a maintainer
 already said "won't fix."
 
-[![CI](https://github.com/OWNER/is-it-fixable/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/is-it-fixable/actions/workflows/ci.yml)
+[![CI](https://github.com/nagendramohan/is-it-fixable/actions/workflows/ci.yml/badge.svg)](https://github.com/nagendramohan/is-it-fixable/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/is-it-fixable.svg)](https://www.npmjs.com/package/is-it-fixable)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE)
 
