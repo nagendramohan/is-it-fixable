@@ -103,6 +103,12 @@ reopen history — then runs a **deterministic, explainable rubric** (no LLM). M
 is trusted only from `OWNER` / `MEMBER` / `COLLABORATOR` comments, so a random user arguing
 "this is by design" doesn't downgrade an issue.
 
+It also detects **prose-only PR references** — a PR mentioned merely in a comment or the issue body
+(`#1195`, or a `…/pull/1195` URL) creates no structured timeline event, yet often marks a prior
+rejected attempt. These are weighted more cautiously than structural links: a mentioned
+*closed-unmerged* PR flags `CONTENTIOUS`, while a mentioned *open* PR is a moderate downgrade rather
+than a hard `TAKEN`.
+
 > Not affiliated with GitHub. `is-it-fixable` is a heuristic aid, not an oracle — always sanity-check
 > before committing hours. "Already fixed on the default branch" detection (build + reproduce) is
 > planned for a future release.

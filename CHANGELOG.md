@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-18
+
+### Added
+
+- **Prose PR-reference detection.** Issues that reference a PR only in prose — a comment or the
+  issue body saying `#1195` or a `github.com/.../pull/1195` URL — produce no structured
+  `CrossReferencedEvent`, so v0.1 (timeline-only) missed them and could report `CLEAN` for an issue
+  that already had a rejected fix attempt. v0.2 scans the body + comments, resolves referenced
+  numbers to their PR state in a single batched GraphQL call, and folds them into the rubric.
+- Nuanced weighting for these weaker, prose-only links: a mentioned **closed-unmerged** PR flags
+  `CONTENTIOUS` (a rejected attempt is still a rejected attempt), while a mentioned **open** PR is a
+  moderate downgrade with evidence rather than a hard `TAKEN` (avoids false positives from casual
+  mentions). Structural timeline links keep their original strength.
+- Regression coverage from the real `toml-rs/toml#1008` case (closed PR `#1195` linked only in a
+  comment) — now correctly classified `CONTENTIOUS`.
+
+### Changed
+
+- `IssueSnapshot` now carries the issue `body`; `LinkedPullRequest.linkType` gains `"mentioned"`.
+
 ## [0.1.0] - 2026-08-18
 
 ### Added
@@ -27,5 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Already fixed on the default branch" detection (clone + build + reproduce).
 - GitHub Action packaging.
 
-[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nagendramohan/is-it-fixable/releases/tag/v0.1.0

@@ -12,6 +12,7 @@ export function makeIssue(overrides: Partial<IssueSnapshot> = {}): IssueSnapshot
     state: "OPEN",
     createdAt: "2026-08-01T00:00:00Z",
     updatedAt: "2026-08-10T00:00:00Z",
+    body: "",
     labels: [],
     linkedPullRequests: [],
     linkedBranchCount: 0,

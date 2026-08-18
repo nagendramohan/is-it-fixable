@@ -88,10 +88,18 @@ export function assessIssue(issue: IssueSnapshot, opts: AssessOptions = {}): Fix
   };
 
   // --- Tier 1: claim signals ---
-  const openPr = issue.linkedPullRequests.find((p) => p.state === "OPEN" && !p.isDraft);
-  const draftPr = issue.linkedPullRequests.find((p) => p.state === "OPEN" && p.isDraft);
-  const closedUnmergedPrs = issue.linkedPullRequests.filter((p) => p.state === "CLOSED");
-  const mergedPrs = issue.linkedPullRequests.filter((p) => p.state === "MERGED");
+  // Distinguish structurally-linked PRs (strong) from prose-mentioned ones (weaker).
+  const structural = issue.linkedPullRequests.filter((p) => p.linkType !== "mentioned");
+  const mentioned = issue.linkedPullRequests.filter((p) => p.linkType === "mentioned");
+
+  const openPr = structural.find((p) => p.state === "OPEN" && !p.isDraft);
+  const draftPr = structural.find((p) => p.state === "OPEN" && p.isDraft);
+  const closedUnmergedPrs = structural.filter((p) => p.state === "CLOSED");
+  const mergedPrs = structural.filter((p) => p.state === "MERGED");
+
+  // Prose-mentioned PRs (no structured timeline event): weaker signals.
+  const mentionedOpenPr = mentioned.find((p) => p.state === "OPEN" && !p.isDraft);
+  const mentionedClosedPrs = mentioned.filter((p) => p.state === "CLOSED");
 
   if (openPr) {
     add("open_pr", `Open PR #${openPr.number} is already linked (someone is fixing this).`, -45);
@@ -117,6 +125,23 @@ export function assessIssue(issue: IssueSnapshot, opts: AssessOptions = {}): Fix
     add(
       "merged_pr_issue_open",
       `Merged PR(s) ${nums} reference this issue but it is still open — it may already be fixed; verify on the default branch.`,
+      -15,
+    );
+  }
+
+  // Prose-mentioned PRs: weaker than structural links, but a rejected prior attempt still matters.
+  if (mentionedClosedPrs.length > 0) {
+    const nums = mentionedClosedPrs.map((p) => `#${p.number}`).join(", ");
+    add(
+      "mentioned_closed_pr",
+      `Closed, unmerged PR(s) ${nums} referenced in the discussion — a prior fix attempt was rejected or abandoned.`,
+      -25,
+    );
+  }
+  if (mentionedOpenPr) {
+    add(
+      "mentioned_open_pr",
+      `Open PR #${mentionedOpenPr.number} is referenced in the discussion (mentioned, not formally linked) — someone may already be working on this.`,
       -15,
     );
   }
@@ -184,6 +209,7 @@ export function assessIssue(issue: IssueSnapshot, opts: AssessOptions = {}): Fix
     hasDraftOrBranch: Boolean(draftPr) || issue.linkedBranchCount > 0,
     contentious:
       closedUnmergedPrs.length > 0 ||
+      mentionedClosedPrs.length > 0 ||
       matchedDowngrade.length > 0 ||
       issue.reopenedAfterClose ||
       Boolean(negativeComment),

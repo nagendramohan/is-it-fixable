@@ -24,7 +24,10 @@ export {
   mapIssueNode,
   type RawIssueNode,
   RateLimitError,
+  type ResolvedRef,
+  resolveReferences,
 } from "./github.js";
+export { type ExtractOptions, extractReferences } from "./mentions.js";
 export { parseTarget, type Target } from "./target.js";
 export {
   type BuildInfo,
@@ -32,7 +35,12 @@ export {
   buildHint,
   detectBuildSystem,
 } from "./build-system.js";
-export { analyze, type AnalyzeOptions, type AnalyzeResult } from "./analyze.js";
+export {
+  analyze,
+  type AnalyzeOptions,
+  type AnalyzeResult,
+  mergeMentionedPullRequests,
+} from "./analyze.js";
 export {
   type JsonOutput,
   renderReport,

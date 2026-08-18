@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Orchestration: fetch → assess → (optionally) detect build system. Network-bound; the CLI calls this.
+// Orchestration: fetch -> (enrich with prose mentions) -> assess -> (optionally) detect build system.
 
 import { type BuildInfo, detectBuildSystem } from "./build-system.js";
 import {
@@ -7,14 +7,23 @@ import {
   fetchRepoIssues,
   fetchRepoTopLevelFiles,
   fetchSingleIssue,
+  resolveReferences,
 } from "./github.js";
+import type { ResolvedRef } from "./github.js";
+import { extractReferences } from "./mentions.js";
 import { assessIssue } from "./rubric.js";
 import type { Target } from "./target.js";
-import type { FixabilityResult } from "./types.js";
+import type { FixabilityResult, IssueSnapshot } from "./types.js";
 
 export interface AnalyzeOptions extends FetchOptions {
   /** Also detect the repo build system (one extra API call). */
   detectBuild?: boolean;
+  /**
+   * Scan issue body + comments for prose PR references (e.g. "#1195") and resolve their state,
+   * catching PRs that produced no structured timeline event. One extra API call per issue that
+   * has unresolved references. Default true.
+   */
+  resolveMentions?: boolean;
 }
 
 export interface AnalyzeResult {
@@ -23,16 +32,62 @@ export interface AnalyzeResult {
   build?: BuildInfo | undefined;
 }
 
+/**
+ * Pure: fold resolved reference PRs into a snapshot as linkType "mentioned",
+ * skipping numbers already present. Exported for deterministic (offline) testing.
+ */
+export function mergeMentionedPullRequests(
+  snap: IssueSnapshot,
+  resolved: readonly ResolvedRef[],
+): IssueSnapshot {
+  const already = new Set(snap.linkedPullRequests.map((p) => p.number));
+  const mentioned = resolved
+    .filter((r) => r.isPullRequest && !already.has(r.number))
+    .map((r) => ({
+      number: r.number,
+      state: r.state,
+      isDraft: r.isDraft,
+      linkType: "mentioned" as const,
+    }));
+  if (mentioned.length === 0) return snap;
+  return { ...snap, linkedPullRequests: [...snap.linkedPullRequests, ...mentioned] };
+}
+
+/**
+ * Enrich a snapshot with prose-mentioned PRs that produced no structured timeline event.
+ */
+async function enrichWithMentions(
+  snap: IssueSnapshot,
+  options: AnalyzeOptions,
+): Promise<IssueSnapshot> {
+  const texts = [snap.body, ...snap.comments.map((c) => c.body)];
+  const candidates = extractReferences(texts, {
+    selfNumber: snap.number,
+    owner: snap.owner,
+    repo: snap.repo,
+  });
+  const already = new Set(snap.linkedPullRequests.map((p) => p.number));
+  const toResolve = candidates.filter((n) => !already.has(n));
+  if (toResolve.length === 0) return snap;
+
+  const resolved = await resolveReferences(snap.owner, snap.repo, toResolve, options);
+  return mergeMentionedPullRequests(snap, resolved);
+}
+
 export async function analyze(
   target: Target,
   options: AnalyzeOptions = {},
 ): Promise<AnalyzeResult> {
   const label = `${target.owner}/${target.repo}${target.kind === "issue" ? `#${target.number}` : ""}`;
 
-  const snapshots =
+  let snapshots =
     target.kind === "issue"
       ? [await fetchSingleIssue(target.owner, target.repo, target.number, options)]
       : await fetchRepoIssues(target.owner, target.repo, options);
+
+  if (options.resolveMentions !== false) {
+    snapshots = await Promise.all(snapshots.map((s) => enrichWithMentions(s, options)));
+  }
 
   const results = snapshots.map((s) => assessIssue(s));
 

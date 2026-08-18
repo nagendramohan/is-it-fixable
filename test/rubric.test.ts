@@ -82,4 +82,42 @@ describe("assessIssue — core verdicts", () => {
     expect(r.verdict).toBe("STALE");
     expect(r.evidence.some((e) => e.code === "stale")).toBe(true);
   });
+
+  it("treats a prose-mentioned CLOSED PR as CONTENTIOUS (prior rejected attempt)", () => {
+    const r = assessIssue(
+      makeIssue({
+        linkedPullRequests: [
+          { number: 1195, state: "CLOSED", isDraft: false, linkType: "mentioned" },
+        ],
+      }),
+      { now: NOW },
+    );
+    expect(r.verdict).toBe("CONTENTIOUS");
+    expect(r.evidence.some((e) => e.code === "mentioned_closed_pr")).toBe(true);
+  });
+
+  it("treats a prose-mentioned OPEN PR as a moderate downgrade, NOT a hard TAKEN", () => {
+    const r = assessIssue(
+      makeIssue({
+        linkedPullRequests: [{ number: 42, state: "OPEN", isDraft: false, linkType: "mentioned" }],
+      }),
+      { now: NOW },
+    );
+    expect(r.verdict).not.toBe("TAKEN");
+    expect(r.evidence.some((e) => e.code === "mentioned_open_pr")).toBe(true);
+    expect(r.score).toBeLessThan(50);
+    expect(r.score).toBeGreaterThan(5);
+  });
+
+  it("still treats a STRUCTURAL open PR as hard TAKEN (unchanged)", () => {
+    const r = assessIssue(
+      makeIssue({
+        linkedPullRequests: [
+          { number: 42, state: "OPEN", isDraft: false, linkType: "cross-referenced" },
+        ],
+      }),
+      { now: NOW },
+    );
+    expect(r.verdict).toBe("TAKEN");
+  });
 });

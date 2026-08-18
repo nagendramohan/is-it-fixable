@@ -20,6 +20,7 @@ export interface RawIssueNode {
   state: string;
   createdAt: string;
   updatedAt: string;
+  body?: string | null;
   reactions?: { totalCount?: number } | null;
   labels?: { nodes?: Array<{ name: string } | null> | null } | null;
   comments?: {
@@ -127,6 +128,7 @@ export function mapIssueNode(owner: string, repo: string, node: RawIssueNode): I
     state: node.state === "CLOSED" ? "CLOSED" : "OPEN",
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
+    body: node.body ?? "",
     labels,
     linkedPullRequests,
     linkedBranchCount: node.linkedBranches?.totalCount ?? 0,
@@ -142,7 +144,7 @@ query($owner: String!, $repo: String!, $first: Int!, $after: String) {
     issues(first: $first, after: $after, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
       pageInfo { hasNextPage endCursor }
       nodes {
-        number title url state createdAt updatedAt
+        number title url state createdAt updatedAt body
         reactions { totalCount }
         labels(first: 20) { nodes { name } }
         comments(last: 20) { nodes { body createdAt authorAssociation } }
@@ -216,7 +218,7 @@ const SINGLE_ISSUE_QUERY = `
 query($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
     issue(number: $number) {
-      number title url state createdAt updatedAt
+      number title url state createdAt updatedAt body
       reactions { totalCount }
       labels(first: 20) { nodes { name } }
       comments(last: 20) { nodes { body createdAt authorAssociation } }
@@ -270,6 +272,59 @@ function translateError(err: unknown, hasToken: boolean): Error {
     return new Error("Repository not found (or private and the token lacks access).");
   }
   return err instanceof Error ? err : new Error(message);
+}
+
+export interface ResolvedRef {
+  number: number;
+  isPullRequest: boolean;
+  state: PullRequestState;
+  isDraft: boolean;
+}
+
+/**
+ * Resolve a batch of issue/PR numbers to their type + state in a SINGLE GraphQL call, using
+ * aliased `issueOrPullRequest` selections. Numbers that don't resolve to a PR are omitted.
+ */
+export async function resolveReferences(
+  owner: string,
+  repo: string,
+  numbers: readonly number[],
+  options: FetchOptions = {},
+): Promise<ResolvedRef[]> {
+  if (numbers.length === 0) return [];
+  const token = options.token ?? process.env.GITHUB_TOKEN;
+  const client = graphql.defaults(token ? { headers: { authorization: `token ${token}` } } : {});
+
+  const aliases = numbers
+    .map(
+      (n) =>
+        `r${n}: issueOrPullRequest(number: ${n}) { __typename ... on PullRequest { number isDraft state merged } }`,
+    )
+    .join("\n");
+  const query = `query($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo) {\n${aliases}\n} }`;
+
+  try {
+    const data = await client<{ repository: Record<string, RawPullRequestRef | null> }>(query, {
+      owner,
+      repo,
+    });
+    const repository = data.repository ?? {};
+    const out: ResolvedRef[] = [];
+    for (const n of numbers) {
+      const ref = repository[`r${n}`];
+      if (ref && ref.__typename === "PullRequest") {
+        out.push({
+          number: n,
+          isPullRequest: true,
+          state: normalizePrState(ref),
+          isDraft: Boolean(ref.isDraft),
+        });
+      }
+    }
+    return out;
+  } catch (err) {
+    throw translateError(err, Boolean(token));
+  }
 }
 
 const REPO_TREE_QUERY = `

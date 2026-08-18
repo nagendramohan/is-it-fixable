@@ -16,13 +16,17 @@ export type AuthorAssociation =
 
 export type PullRequestState = "OPEN" | "CLOSED" | "MERGED";
 
-/** A pull request linked to the issue via a timeline cross-reference/connection. */
+/** A pull request linked to the issue via a timeline cross-reference/connection, or a prose mention. */
 export interface LinkedPullRequest {
   number: number;
   state: PullRequestState;
   isDraft: boolean;
-  /** How the PR became linked: a mention (cross-referenced) or a linked branch (connected). */
-  linkType: "cross-referenced" | "connected";
+  /**
+   * How the PR became linked:
+   *  - "cross-referenced" / "connected": a structured GitHub timeline event (strong signal).
+   *  - "mentioned": only referenced in prose (comment/body) with no structured event (weaker signal).
+   */
+  linkType: "cross-referenced" | "connected" | "mentioned";
 }
 
 export interface IssueComment {
@@ -41,6 +45,8 @@ export interface IssueSnapshot {
   state: "OPEN" | "CLOSED";
   createdAt: string;
   updatedAt: string;
+  /** The issue's own body text (scanned for prose PR references). */
+  body: string;
   labels: string[];
   linkedPullRequests: LinkedPullRequest[];
   linkedBranchCount: number;

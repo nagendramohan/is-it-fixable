@@ -7,7 +7,9 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { mergeMentionedPullRequests } from "../src/analyze.js";
 import { type RawIssueNode, mapIssueNode } from "../src/github.js";
+import { extractReferences } from "../src/mentions.js";
 import { assessIssue } from "../src/rubric.js";
 import type { Verdict } from "../src/types.js";
 
@@ -92,5 +94,31 @@ describe("accuracy gate — known-answer set reproduces hand-grading", () => {
 
     expect(clean).toBeGreaterThan(taken);
     expect(clean).toBeGreaterThan(contentious);
+  });
+
+  // v0.2: prose-mentioned PRs (toml-rs/toml#1008). The closed PR #1195 is referenced only in a
+  // comment, so there is NO timeline event. v0.1 wrongly reported CLEAN; v0.2 must catch it.
+  it("toml-rs/toml#1008 -> CONTENTIOUS via prose-mentioned closed PR #1195 (v0.2 regression)", () => {
+    const snap = mapIssueNode("toml-rs", "toml", load("toml-1008.json"));
+
+    // v0.1 behavior (timeline only): no PRs seen -> CLEAN. This is the bug we fixed.
+    expect(snap.linkedPullRequests).toHaveLength(0);
+    expect(assessIssue(snap, { now: NOW }).verdict).toBe("CLEAN");
+
+    // v0.2: the parser finds #1195 in the prose...
+    const refs = extractReferences([snap.body, ...snap.comments.map((c) => c.body)], {
+      selfNumber: snap.number,
+      owner: "toml-rs",
+      repo: "toml",
+    });
+    expect(refs).toContain(1195);
+
+    // ...and once resolved as a CLOSED PR and merged in, the verdict is CONTENTIOUS.
+    const enriched = mergeMentionedPullRequests(snap, [
+      { number: 1195, isPullRequest: true, state: "CLOSED", isDraft: false },
+    ]);
+    const result = assessIssue(enriched, { now: NOW });
+    expect(result.verdict).toBe("CONTENTIOUS");
+    expect(result.evidence.map((e) => e.code)).toContain("mentioned_closed_pr");
   });
 });

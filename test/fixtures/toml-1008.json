@@ -1,0 +1,27 @@
+{
+  "number": 1008,
+  "title": "`Display` implementation for `toml_edit::Document` produces an empty string",
+  "url": "https://github.com/toml-rs/toml/issues/1008",
+  "state": "OPEN",
+  "createdAt": "2025-07-11T00:00:00Z",
+  "updatedAt": "2026-07-30T00:00:00Z",
+  "body": "The code below prints an empty string. `Document::to_string()` derefs to Table.",
+  "reactions": { "totalCount": 3 },
+  "labels": { "nodes": [{ "name": "C-bug" }, { "name": "A-output" }] },
+  "comments": {
+    "nodes": [
+      {
+        "body": "Going to need to put more thought into this for how this should be fixed.",
+        "createdAt": "2025-07-18T00:00:00Z",
+        "authorAssociation": "OWNER"
+      },
+      {
+        "body": "Root cause ... Proposed approach in #1195: extract the document-encoding body into a shared helper.",
+        "createdAt": "2026-07-29T00:00:00Z",
+        "authorAssociation": "NONE"
+      }
+    ]
+  },
+  "linkedBranches": { "totalCount": 0 },
+  "timelineItems": { "nodes": [] }
+}
