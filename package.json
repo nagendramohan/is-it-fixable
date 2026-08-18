@@ -1,0 +1,61 @@
+{
+  "name": "is-it-fixable",
+  "version": "0.1.0",
+  "description": "Tells an open-source contributor whether a GitHub issue is actually fixable and worth their time — a scored, evidence-backed verdict per issue, not just a claim-check.",
+  "keywords": [
+    "github",
+    "issues",
+    "open-source",
+    "triage",
+    "contributing",
+    "good-first-issue",
+    "cli",
+    "fixability"
+  ],
+  "license": "Apache-2.0",
+  "author": "Nagendra Mohan <nagendramohan1990@gmail.com>",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "is-it-fixable": "dist/cli.js",
+    "iif": "dist/cli.js"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "LICENSE", "NOTICE", "README.md"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "prepublishOnly": "npm run check && npm run build"
+  },
+  "dependencies": {
+    "@octokit/graphql": "^8.1.1",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^20.14.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
