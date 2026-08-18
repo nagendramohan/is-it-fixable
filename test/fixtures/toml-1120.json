@@ -1,0 +1,25 @@
+{
+  "number": 1120,
+  "title": "Error highlight doesn't handle multi-byte characters correctly",
+  "url": "https://github.com/toml-rs/toml/issues/1120",
+  "state": "OPEN",
+  "createdAt": "2026-03-09T00:00:00Z",
+  "updatedAt": "2026-03-09T00:00:00Z",
+  "reactions": { "totalCount": 1 },
+  "labels": { "nodes": [{ "name": "C-bug" }, { "name": "A-error" }] },
+  "comments": {
+    "nodes": [
+      { "body": "This is likely something we won't fix. We need to balance error quality against build times.",
+        "createdAt": "2026-03-09T00:00:00Z", "authorAssociation": "OWNER" }
+    ]
+  },
+  "linkedBranches": { "totalCount": 0 },
+  "timelineItems": {
+    "nodes": [
+      { "__typename": "CrossReferencedEvent",
+        "source": { "__typename": "PullRequest", "number": 1132, "isDraft": false, "state": "CLOSED", "merged": false } },
+      { "__typename": "CrossReferencedEvent",
+        "source": { "__typename": "PullRequest", "number": 1139, "isDraft": false, "state": "CLOSED", "merged": false } }
+    ]
+  }
+}

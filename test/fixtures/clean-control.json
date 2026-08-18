@@ -1,0 +1,17 @@
+{
+  "number": 7,
+  "title": "Typo in error message for invalid config key",
+  "url": "https://github.com/acme/widgets/issues/7",
+  "state": "OPEN",
+  "createdAt": "2026-08-10T00:00:00Z",
+  "updatedAt": "2026-08-16T00:00:00Z",
+  "reactions": { "totalCount": 0 },
+  "labels": { "nodes": [{ "name": "bug" }, { "name": "good first issue" }] },
+  "comments": {
+    "nodes": [
+      { "body": "Thanks for reporting! PRs welcome.", "createdAt": "2026-08-11T00:00:00Z", "authorAssociation": "MEMBER" }
+    ]
+  },
+  "linkedBranches": { "totalCount": 0 },
+  "timelineItems": { "nodes": [] }
+}
