@@ -16,3 +16,26 @@ export {
   NEGATIVE_PHRASES,
   POSITIVE_LABELS,
 } from "./rubric.js";
+export {
+  type FetchOptions,
+  fetchRepoIssues,
+  fetchRepoTopLevelFiles,
+  fetchSingleIssue,
+  mapIssueNode,
+  type RawIssueNode,
+  RateLimitError,
+} from "./github.js";
+export { parseTarget, type Target } from "./target.js";
+export {
+  type BuildInfo,
+  type BuildSystem,
+  buildHint,
+  detectBuildSystem,
+} from "./build-system.js";
+export { analyze, type AnalyzeOptions, type AnalyzeResult } from "./analyze.js";
+export {
+  type JsonOutput,
+  renderReport,
+  renderResult,
+  toJsonOutput,
+} from "./output.js";

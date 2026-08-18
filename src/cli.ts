@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Command } from "commander";
+import { analyze } from "./analyze.js";
+import { renderReport, toJsonOutput } from "./output.js";
+import { parseTarget } from "./target.js";
+
+interface CliOptions {
+  json?: boolean;
+  token?: string;
+  limit?: string;
+  build?: boolean;
+}
 
 const program = new Command();
 
@@ -8,20 +18,45 @@ program
   .description(
     "Tell whether a GitHub issue is actually fixable and worth your time — a scored, evidence-backed verdict.",
   )
-  .version("0.1.0");
-
-// Full command wiring (data layer + rubric + output) lands in Task #6.
-program
-  .argument("[target]", "owner/repo or a GitHub issue URL")
+  .version("0.1.0")
+  .argument("[target]", 'owner/repo, "owner/repo#123", or a GitHub issue URL')
   .option("--json", "output machine-readable JSON")
-  .option("--token <token>", "GitHub token (or set GITHUB_TOKEN)")
-  .action((target: string | undefined) => {
+  .option("--token <token>", "GitHub token (or set GITHUB_TOKEN) to raise the rate limit")
+  .option("--limit <n>", "max issues to analyze for a repo target", "30")
+  .option("--build", "also detect the repo build system (one extra API call)")
+  .action(async (target: string | undefined, opts: CliOptions) => {
     if (!target) {
       program.help();
+      return;
     }
-    // Placeholder until the data layer + rubric are wired together.
-    process.stderr.write("is-it-fixable: CLI wiring is under construction (Task #6).\n");
-    process.exitCode = 0;
+    try {
+      const parsed = parseTarget(target);
+      const limit = Number.parseInt(opts.limit ?? "30", 10);
+      const analysis = await analyze(parsed, {
+        token: opts.token,
+        limit: Number.isFinite(limit) ? limit : 30,
+        detectBuild: Boolean(opts.build),
+      });
+
+      if (opts.json) {
+        process.stdout.write(
+          `${JSON.stringify(toJsonOutput(analysis.target, analysis.results, analysis.build), null, 2)}\n`,
+        );
+      } else {
+        const useColor = process.stdout.isTTY === true && !process.env.NO_COLOR;
+        process.stdout.write(
+          `${renderReport(analysis.target, analysis.results, { useColor, build: analysis.build })}\n`,
+        );
+      }
+
+      // Exit code: 0 if any CLEAN issue exists (something to pick), 1 otherwise — useful in scripts.
+      const anyClean = analysis.results.some((r) => r.verdict === "CLEAN");
+      process.exitCode = anyClean ? 0 : 1;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`is-it-fixable: ${message}\n`);
+      process.exitCode = 2;
+    }
   });
 
-program.parse();
+program.parseAsync();

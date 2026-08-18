@@ -1,0 +1,38 @@
+{
+  "number": 3119,
+  "title": "HttpBindingsMissingValidator skips validating services when no http trait is applied",
+  "url": "https://github.com/acme/widgets/issues/3119",
+  "state": "OPEN",
+  "createdAt": "2026-05-14T00:00:00Z",
+  "updatedAt": "2026-05-28T00:00:00Z",
+  "reactions": { "totalCount": 2 },
+  "labels": { "nodes": [{ "name": "bug" }, { "name": "needs-discussion" }] },
+  "comments": {
+    "nodes": [
+      {
+        "body": "Reopening to give model authors more time to adjust to this.",
+        "createdAt": "2026-05-14T00:00:00Z",
+        "authorAssociation": "MEMBER"
+      },
+      {
+        "body": "What does 'more time' mean here?",
+        "createdAt": "2026-05-28T00:00:00Z",
+        "authorAssociation": "NONE"
+      }
+    ]
+  },
+  "linkedBranches": { "totalCount": 0 },
+  "timelineItems": {
+    "nodes": [
+      {
+        "__typename": "CrossReferencedEvent",
+        "source": { "__typename": "PullRequest", "number": 3122, "isDraft": false, "state": "CLOSED", "merged": false }
+      },
+      {
+        "__typename": "CrossReferencedEvent",
+        "source": { "__typename": "PullRequest", "number": 3126, "isDraft": false, "state": "CLOSED", "merged": false }
+      },
+      { "__typename": "ReopenedEvent" }
+    ]
+  }
+}
