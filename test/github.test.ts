@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { type RawIssueNode, mapIssueNode } from "../src/github.js";
+import { type RawIssueNode, mapIssueNode, parseResolvedRefs } from "../src/github.js";
 import { parseTarget } from "../src/target.js";
 
 function loadFixture(name: string): RawIssueNode {
@@ -78,5 +78,32 @@ describe("parseTarget", () => {
 
   it("throws on garbage", () => {
     expect(() => parseTarget("not a target")).toThrow(/Could not parse/);
+  });
+});
+
+describe("parseResolvedRefs", () => {
+  it("reads resolved PR aliases and tolerates missing / non-PR entries", () => {
+    const repository = {
+      r1195: {
+        __typename: "PullRequest",
+        number: 1195,
+        state: "CLOSED",
+        merged: false,
+        isDraft: false,
+      },
+      r42: { __typename: "PullRequest", number: 42, state: "OPEN", merged: false, isDraft: true },
+      r7: { __typename: "Issue" }, // resolved to an Issue, not a PR -> skipped
+      // r999 intentionally absent (non-existent number -> partial data has no alias) -> skipped
+    };
+    const refs = parseResolvedRefs(repository, [1195, 42, 7, 999]);
+    expect(refs).toEqual([
+      { number: 1195, isPullRequest: true, state: "CLOSED", isDraft: false },
+      { number: 42, isPullRequest: true, state: "OPEN", isDraft: true },
+    ]);
+  });
+
+  it("returns [] for null/empty repository", () => {
+    expect(parseResolvedRefs(null, [1, 2])).toEqual([]);
+    expect(parseResolvedRefs({}, [1])).toEqual([]);
   });
 });

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-19
+
+### Fixed
+
+- Reference resolution no longer aborts a whole repo scan when a prose reference points to a
+  non-existent number (e.g. a stray `#1035733` in a comment). GitHub returns a top-level GraphQL
+  error for such a reference; we now recover the aliases that *did* resolve from the error's partial
+  data, and per-issue enrichment degrades gracefully instead of failing the run.
+
 ## [0.3.0] - 2026-08-19
 
 ### Added
@@ -61,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Already fixed on the default branch" detection (clone + build + reproduce).
 - GitHub Action packaging.
 
-[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/nagendramohan/is-it-fixable/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nagendramohan/is-it-fixable/releases/tag/v0.1.0

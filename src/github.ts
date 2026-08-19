@@ -286,6 +286,31 @@ export interface ResolvedRef {
  * Resolve a batch of issue/PR numbers to their type + state in a SINGLE GraphQL call, using
  * aliased `issueOrPullRequest` selections. Numbers that don't resolve to a PR are omitted.
  */
+/**
+ * Pure: read aliased `r{number}` fields from a GraphQL `repository` object into ResolvedRefs.
+ * Tolerates missing/null aliases (e.g. numbers that don't exist, or resolved to an Issue not a PR).
+ * Exported for tests.
+ */
+export function parseResolvedRefs(
+  repository: Record<string, RawPullRequestRef | null> | null | undefined,
+  numbers: readonly number[],
+): ResolvedRef[] {
+  const repo = repository ?? {};
+  const out: ResolvedRef[] = [];
+  for (const n of numbers) {
+    const ref = repo[`r${n}`];
+    if (ref && ref.__typename === "PullRequest") {
+      out.push({
+        number: n,
+        isPullRequest: true,
+        state: normalizePrState(ref),
+        isDraft: Boolean(ref.isDraft),
+      });
+    }
+  }
+  return out;
+}
+
 export async function resolveReferences(
   owner: string,
   repo: string,
@@ -309,21 +334,17 @@ export async function resolveReferences(
       owner,
       repo,
     });
-    const repository = data.repository ?? {};
-    const out: ResolvedRef[] = [];
-    for (const n of numbers) {
-      const ref = repository[`r${n}`];
-      if (ref && ref.__typename === "PullRequest") {
-        out.push({
-          number: n,
-          isPullRequest: true,
-          state: normalizePrState(ref),
-          isDraft: Boolean(ref.isDraft),
-        });
-      }
-    }
-    return out;
+    return parseResolvedRefs(data.repository, numbers);
   } catch (err) {
+    // A reference to a non-existent number makes issueOrPullRequest emit a top-level GraphQL error,
+    // but GitHub still returns the aliases that DID resolve in the error's partial `data`. Recover
+    // those and ignore the "could not resolve" ones instead of failing the whole scan.
+    const partial = (err as { data?: { repository?: Record<string, RawPullRequestRef | null> } })
+      ?.data?.repository;
+    if (partial) {
+      return parseResolvedRefs(partial, numbers);
+    }
+    // No partial data (e.g. auth/rate-limit/network) — surface a friendly error.
     throw translateError(err, Boolean(token));
   }
 }

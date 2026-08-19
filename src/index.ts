@@ -25,6 +25,7 @@ export {
   type RawIssueNode,
   RateLimitError,
   type ResolvedRef,
+  parseResolvedRefs,
   resolveReferences,
 } from "./github.js";
 export { type ExtractOptions, extractReferences } from "./mentions.js";

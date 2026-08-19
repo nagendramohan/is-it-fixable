@@ -79,7 +79,14 @@ async function enrichWithMentions(
   const toResolve = candidates.filter((n) => !already.has(n));
   if (toResolve.length === 0) return snap;
 
-  const resolved = await resolveReferences(snap.owner, snap.repo, toResolve, options);
+  // Never let a single issue's reference resolution abort the whole scan — degrade to the
+  // un-enriched snapshot on any failure.
+  let resolved: ResolvedRef[];
+  try {
+    resolved = await resolveReferences(snap.owner, snap.repo, toResolve, options);
+  } catch {
+    return snap;
+  }
   return mergeMentionedPullRequests(snap, resolved);
 }
 
