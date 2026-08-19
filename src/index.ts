@@ -30,6 +30,13 @@ export {
 export { type ExtractOptions, extractReferences } from "./mentions.js";
 export { parseTarget, type Target } from "./target.js";
 export {
+  assessRepoHealth,
+  type RecentPr,
+  type RepoHealth,
+  type RepoHealthVerdict,
+  repoHealthLine,
+} from "./repo-health.js";
+export {
   type BuildInfo,
   type BuildSystem,
   buildHint,

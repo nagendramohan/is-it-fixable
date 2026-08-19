@@ -9,6 +9,7 @@ interface CliOptions {
   token?: string;
   limit?: string;
   build?: boolean;
+  repoHealth?: boolean;
 }
 
 const program = new Command();
@@ -24,6 +25,7 @@ program
   .option("--token <token>", "GitHub token (or set GITHUB_TOKEN) to raise the rate limit")
   .option("--limit <n>", "max issues to analyze for a repo target", "30")
   .option("--build", "also detect the repo build system (one extra API call)")
+  .option("--no-repo-health", "skip the repo merge-velocity signal for repo targets")
   .action(async (target: string | undefined, opts: CliOptions) => {
     if (!target) {
       program.help();
@@ -36,16 +38,17 @@ program
         token: opts.token,
         limit: Number.isFinite(limit) ? limit : 30,
         detectBuild: Boolean(opts.build),
+        repoHealth: opts.repoHealth !== false,
       });
 
       if (opts.json) {
         process.stdout.write(
-          `${JSON.stringify(toJsonOutput(analysis.target, analysis.results, analysis.build), null, 2)}\n`,
+          `${JSON.stringify(toJsonOutput(analysis.target, analysis.results, analysis.build, analysis.repoHealth), null, 2)}\n`,
         );
       } else {
         const useColor = process.stdout.isTTY === true && !process.env.NO_COLOR;
         process.stdout.write(
-          `${renderReport(analysis.target, analysis.results, { useColor, build: analysis.build })}\n`,
+          `${renderReport(analysis.target, analysis.results, { useColor, build: analysis.build, repoHealth: analysis.repoHealth })}\n`,
         );
       }
 

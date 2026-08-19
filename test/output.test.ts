@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from "vitest";
 import { renderReport, toJsonOutput } from "../src/output.js";
+import { assessRepoHealth } from "../src/repo-health.js";
 import { assessIssue } from "../src/rubric.js";
 import { NOW, makeIssue } from "./helpers.js";
 
@@ -41,5 +42,20 @@ describe("renderReport", () => {
     expect(text).toContain("CLEAN");
     expect(text).toContain("TAKEN");
     expect(text).toContain("acme/widgets");
+  });
+
+  it("includes the repo-health line when provided", () => {
+    const repoHealth = assessRepoHealth([
+      {
+        number: 1,
+        authorAssociation: "CONTRIBUTOR",
+        merged: false,
+        createdAt: "2026-08-01T00:00:00Z",
+        mergedAt: null,
+      },
+    ]);
+    const text = renderReport("acme/widgets", results(), { useColor: false, repoHealth });
+    expect(text).toContain("repo health:");
+    expect(text).toContain("LOW-EXTERNAL-MERGE");
   });
 });

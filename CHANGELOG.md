@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-19
+
+### Added
+
+- **Repo merge-velocity / health signal.** For a repo target, `is-it-fixable` now reports how readily
+  the repo merges **external** (non-member) pull requests — the count merged, the external merge
+  ratio, and the median time-to-merge — as a repo-level verdict: `HEALTHY`, `SLOW`,
+  `LOW-EXTERNAL-MERGE`, or `UNKNOWN`. This helps contributors avoid sinking effort into repos that
+  rarely (or slowly) merge outside contributions. On by default for repo targets (one extra API
+  call); disable with `--no-repo-health`.
+- The signal is deliberately **repo-level only** — it never alters a per-issue verdict, so a genuinely
+  `CLEAN` issue is never masked just because its repo is slow. The user weighs it themselves.
+- Included in `--json` output under `repoHealth`.
+
 ## [0.2.0] - 2026-08-18
 
 ### Added
@@ -47,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Already fixed on the default branch" detection (clone + build + reproduce).
 - GitHub Action packaging.
 
-[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nagendramohan/is-it-fixable/releases/tag/v0.1.0

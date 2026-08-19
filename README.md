@@ -49,6 +49,9 @@ is-it-fixable apache/commons-lang --json
 # Also report whether YOU can build it locally
 is-it-fixable smithy-lang/smithy --build
 
+# For a repo target, a merge-velocity signal is shown by default (disable with --no-repo-health)
+is-it-fixable toml-rs/toml --no-repo-health
+
 # Raise the GitHub rate limit (60/hr -> 5000/hr)
 export GITHUB_TOKEN=ghp_xxx        # or: --token ghp_xxx
 ```
@@ -108,6 +111,12 @@ It also detects **prose-only PR references** — a PR mentioned merely in a comm
 rejected attempt. These are weighted more cautiously than structural links: a mentioned
 *closed-unmerged* PR flags `CONTENTIOUS`, while a mentioned *open* PR is a moderate downgrade rather
 than a hard `TAKEN`.
+
+For a **repo** target it also reports a **merge-velocity signal** — how readily the repo merges
+external (non-member) PRs (`HEALTHY` / `SLOW` / `LOW-EXTERNAL-MERGE` / `UNKNOWN`, with counts and
+median time-to-merge). This is a *repo-level* signal only: it never changes a per-issue verdict, so a
+genuinely `CLEAN` issue is never hidden just because its repo is slow — it just tells you whether
+your effort is likely to be reviewed at all.
 
 > Not affiliated with GitHub. `is-it-fixable` is a heuristic aid, not an oracle — always sanity-check
 > before committing hours. "Already fixed on the default branch" detection (build + reproduce) is

@@ -4,6 +4,7 @@
 // against saved fixtures without any network access.
 
 import { graphql } from "@octokit/graphql";
+import type { RecentPr } from "./repo-health.js";
 import type {
   AuthorAssociation,
   IssueComment,
@@ -322,6 +323,53 @@ export async function resolveReferences(
       }
     }
     return out;
+  } catch (err) {
+    throw translateError(err, Boolean(token));
+  }
+}
+
+const RECENT_PRS_QUERY = `
+query($owner: String!, $repo: String!, $first: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequests(first: $first, states: [MERGED, CLOSED], orderBy: {field: CREATED_AT, direction: DESC}) {
+      nodes { number state merged createdAt mergedAt authorAssociation }
+    }
+  }
+}`;
+
+interface RawRecentPr {
+  number: number;
+  merged?: boolean | null;
+  createdAt?: string | null;
+  mergedAt?: string | null;
+  authorAssociation?: string | null;
+}
+
+/** Pure: normalize a raw PR node into a RecentPr. Exported for tests. */
+export function mapRecentPr(node: RawRecentPr): RecentPr {
+  return {
+    number: node.number,
+    authorAssociation: normalizeAssociation(node.authorAssociation),
+    merged: Boolean(node.merged),
+    createdAt: node.createdAt ?? "",
+    mergedAt: node.mergedAt ?? null,
+  };
+}
+
+/** Fetch recent closed (merged or unmerged) PRs for repo-health assessment. */
+export async function fetchRecentPullRequests(
+  owner: string,
+  repo: string,
+  options: FetchOptions & { sample?: number } = {},
+): Promise<RecentPr[]> {
+  const token = options.token ?? process.env.GITHUB_TOKEN;
+  const first = Math.min(100, options.sample ?? 50);
+  const client = graphql.defaults(token ? { headers: { authorization: `token ${token}` } } : {});
+  try {
+    const data = await client<{
+      repository: { pullRequests: { nodes: RawRecentPr[] } };
+    }>(RECENT_PRS_QUERY, { owner, repo, first });
+    return data.repository.pullRequests.nodes.map(mapRecentPr);
   } catch (err) {
     throw translateError(err, Boolean(token));
   }

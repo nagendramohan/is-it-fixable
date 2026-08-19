@@ -1,6 +1,6 @@
 {
   "name": "is-it-fixable",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tells an open-source contributor whether a GitHub issue is actually fixable and worth their time — a scored, evidence-backed verdict per issue, not just a claim-check.",
   "keywords": [
     "github",

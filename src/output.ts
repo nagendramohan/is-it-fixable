@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { BuildInfo } from "./build-system.js";
+import { type RepoHealth, repoHealthLine } from "./repo-health.js";
 import type { FixabilityResult, Verdict } from "./types.js";
 
 const VERDICT_ICON: Record<Verdict, string> = {
@@ -18,6 +19,7 @@ function dim(s: string, useColor: boolean): string {
 export interface RenderOptions {
   useColor: boolean;
   build?: BuildInfo | undefined;
+  repoHealth?: RepoHealth | undefined;
 }
 
 /** Render a single result as a compact, human-readable block. */
@@ -52,6 +54,9 @@ export function renderReport(
       dim(`build: ${opts.build.system}${opts.build.hasWrapper ? " (wrapper)" : ""}`, opts.useColor),
     );
   }
+  if (opts.repoHealth) {
+    out.push(dim(repoHealthLine(opts.repoHealth), opts.useColor));
+  }
   out.push(dim(`${results.length} open issue(s) analyzed · ${clean} look CLEAN`, opts.useColor));
   out.push("");
   for (const r of sorted) {
@@ -65,6 +70,7 @@ export function renderReport(
 export interface JsonOutput {
   target: string;
   build?: BuildInfo;
+  repoHealth?: RepoHealth;
   results: Array<{
     number: number;
     title: string;
@@ -79,6 +85,7 @@ export function toJsonOutput(
   target: string,
   results: FixabilityResult[],
   build?: BuildInfo,
+  repoHealth?: RepoHealth,
 ): JsonOutput {
   const out: JsonOutput = {
     target,
@@ -94,5 +101,6 @@ export function toJsonOutput(
       })),
   };
   if (build) out.build = build;
+  if (repoHealth) out.repoHealth = repoHealth;
   return out;
 }

@@ -4,6 +4,7 @@
 import { type BuildInfo, detectBuildSystem } from "./build-system.js";
 import {
   type FetchOptions,
+  fetchRecentPullRequests,
   fetchRepoIssues,
   fetchRepoTopLevelFiles,
   fetchSingleIssue,
@@ -11,6 +12,7 @@ import {
 } from "./github.js";
 import type { ResolvedRef } from "./github.js";
 import { extractReferences } from "./mentions.js";
+import { type RepoHealth, assessRepoHealth } from "./repo-health.js";
 import { assessIssue } from "./rubric.js";
 import type { Target } from "./target.js";
 import type { FixabilityResult, IssueSnapshot } from "./types.js";
@@ -24,12 +26,19 @@ export interface AnalyzeOptions extends FetchOptions {
    * has unresolved references. Default true.
    */
   resolveMentions?: boolean;
+  /**
+   * For repo targets, assess how readily the repo merges external PRs (one extra API call).
+   * Ignored for single-issue targets. Default true.
+   */
+  repoHealth?: boolean;
 }
 
 export interface AnalyzeResult {
   target: string;
   results: FixabilityResult[];
   build?: BuildInfo | undefined;
+  /** Repo-level merge-velocity signal (repo targets only). Never alters per-issue verdicts. */
+  repoHealth?: RepoHealth | undefined;
 }
 
 /**
@@ -97,5 +106,11 @@ export async function analyze(
     build = detectBuildSystem(files);
   }
 
-  return { target: label, results, build };
+  let repoHealth: RepoHealth | undefined;
+  if (target.kind === "repo" && options.repoHealth !== false) {
+    const recentPrs = await fetchRecentPullRequests(target.owner, target.repo, options);
+    repoHealth = assessRepoHealth(recentPrs);
+  }
+
+  return { target: label, results, build, repoHealth };
 }
