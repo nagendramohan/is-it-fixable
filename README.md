@@ -102,9 +102,11 @@ that produced it, so nothing is a black box.
 
 `is-it-fixable` uses the GitHub GraphQL API to read each issue's timeline (cross-referenced &
 connected PRs), labels, comments (with author association), reactions, linked branches, and
-reopen history — then runs a **deterministic, explainable rubric** (no LLM). Maintainer sentiment
-is trusted only from `OWNER` / `MEMBER` / `COLLABORATOR` comments, so a random user arguing
-"this is by design" doesn't downgrade an issue.
+reopen history — then runs a **deterministic, explainable rubric** (no LLM). It also **searches for
+pull requests that reference the issue** (`type:pr`), because many real fix PRs never generate a
+timeline cross-reference — so an issue that already has an open fix PR is correctly reported `TAKEN`
+rather than `CLEAN`. Maintainer sentiment is trusted only from `OWNER` / `MEMBER` / `COLLABORATOR`
+comments, so a random user arguing "this is by design" doesn't downgrade an issue.
 
 It also detects **prose-only PR references** — a PR mentioned merely in a comment or the issue body
 (`#1195`, or a `…/pull/1195` URL) creates no structured timeline event, yet often marks a prior

@@ -24,9 +24,12 @@ export {
   mapIssueNode,
   type RawIssueNode,
   RateLimitError,
+  type RawSearchPrItem,
   type ResolvedRef,
   parseResolvedRefs,
+  mapSearchPrItem,
   resolveReferences,
+  searchReferencingPullRequests,
 } from "./github.js";
 export { type ExtractOptions, extractReferences } from "./mentions.js";
 export { parseTarget, type Target } from "./target.js";
@@ -48,6 +51,7 @@ export {
   type AnalyzeOptions,
   type AnalyzeResult,
   mergeMentionedPullRequests,
+  mergeReferencedPullRequests,
 } from "./analyze.js";
 export {
   type JsonOutput,

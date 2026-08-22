@@ -24,9 +24,11 @@ export interface LinkedPullRequest {
   /**
    * How the PR became linked:
    *  - "cross-referenced" / "connected": a structured GitHub timeline event (strong signal).
+   *  - "referenced": found by searching for PRs that reference the issue number (strong signal).
+   *    Catches fix PRs that the issue timeline does not surface — the common real-world case.
    *  - "mentioned": only referenced in prose (comment/body) with no structured event (weaker signal).
    */
-  linkType: "cross-referenced" | "connected" | "mentioned";
+  linkType: "cross-referenced" | "connected" | "referenced" | "mentioned";
 }
 
 export interface IssueComment {

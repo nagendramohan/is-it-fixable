@@ -10,6 +10,7 @@ interface CliOptions {
   limit?: string;
   build?: boolean;
   repoHealth?: boolean;
+  referencingPrs?: boolean;
 }
 
 const program = new Command();
@@ -26,6 +27,10 @@ program
   .option("--limit <n>", "max issues to analyze for a repo target", "30")
   .option("--build", "also detect the repo build system (one extra API call)")
   .option("--no-repo-health", "skip the repo merge-velocity signal for repo targets")
+  .option(
+    "--no-referencing-prs",
+    "skip searching for PRs that reference each issue (one search-API call per issue)",
+  )
   .action(async (target: string | undefined, opts: CliOptions) => {
     if (!target) {
       program.help();
@@ -39,6 +44,7 @@ program
         limit: Number.isFinite(limit) ? limit : 30,
         detectBuild: Boolean(opts.build),
         repoHealth: opts.repoHealth !== false,
+        resolveReferencingPrs: opts.referencingPrs !== false,
       });
 
       if (opts.json) {

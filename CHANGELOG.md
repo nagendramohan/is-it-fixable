@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-22
+
+### Fixed
+
+- **Claim detection now finds PRs the issue timeline misses — the core "is it TAKEN?" fix.**
+  Previously the tool only detected linked PRs via the issue's timeline cross-reference events.
+  Many real fix PRs never produce such an event, so heavily-contested issues (that already had one
+  or more open fix PRs) were reported `CLEAN`. `is-it-fixable` now also **searches for pull requests
+  that reference the issue number** (`type:pr`) and folds them into the rubric: an open referencing
+  PR ⇒ `TAKEN`, a closed-unmerged one ⇒ `CONTENTIOUS`.
+
+### Added
+
+- `--no-referencing-prs` to skip the PR search (it adds one search-API call per issue; GitHub's
+  search API is rate-limited to ~30/min, and the check degrades gracefully to timeline-only signals
+  if a search fails).
+- A headline regression gate built from six real issues on which the old timeline-only detection
+  falsely reported `CLEAN` (bat #3844, fd #2078, numbat #873, coreutils #13887/#13937/#13347) —
+  each now correctly `TAKEN`.
+
 ## [0.3.1] - 2026-08-19
 
 ### Fixed
@@ -70,7 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Already fixed on the default branch" detection (clone + build + reproduce).
 - GitHub Action packaging.
 
-[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/nagendramohan/is-it-fixable/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.1.0...v0.2.0

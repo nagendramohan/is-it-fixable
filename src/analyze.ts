@@ -9,13 +9,14 @@ import {
   fetchRepoTopLevelFiles,
   fetchSingleIssue,
   resolveReferences,
+  searchReferencingPullRequests,
 } from "./github.js";
 import type { ResolvedRef } from "./github.js";
 import { extractReferences } from "./mentions.js";
 import { type RepoHealth, assessRepoHealth } from "./repo-health.js";
 import { assessIssue } from "./rubric.js";
 import type { Target } from "./target.js";
-import type { FixabilityResult, IssueSnapshot } from "./types.js";
+import type { FixabilityResult, IssueSnapshot, LinkedPullRequest } from "./types.js";
 
 export interface AnalyzeOptions extends FetchOptions {
   /** Also detect the repo build system (one extra API call). */
@@ -31,6 +32,12 @@ export interface AnalyzeOptions extends FetchOptions {
    * Ignored for single-issue targets. Default true.
    */
   repoHealth?: boolean;
+  /**
+   * Search for pull requests that REFERENCE each issue (one search-API call per issue). This
+   * catches fix PRs that the issue timeline does not surface — the primary claim signal.
+   * Default true.
+   */
+  resolveReferencingPrs?: boolean;
 }
 
 export interface AnalyzeResult {
@@ -90,6 +97,41 @@ async function enrichWithMentions(
   return mergeMentionedPullRequests(snap, resolved);
 }
 
+/**
+ * Pure: fold search-found referencing PRs into a snapshot, skipping numbers already present (from
+ * the timeline or prose mentions). Exported for deterministic (offline) testing.
+ */
+export function mergeReferencedPullRequests(
+  snap: IssueSnapshot,
+  referencing: readonly LinkedPullRequest[],
+): IssueSnapshot {
+  const already = new Set(snap.linkedPullRequests.map((p) => p.number));
+  const extra = referencing.filter((p) => !already.has(p.number));
+  if (extra.length === 0) return snap;
+  return { ...snap, linkedPullRequests: [...snap.linkedPullRequests, ...extra] };
+}
+
+/**
+ * Enrich a snapshot with PRs that reference the issue (found via search). One search-API call.
+ * Degrades to the un-enriched snapshot on any failure so it never aborts a scan.
+ */
+async function enrichWithReferencingPrs(
+  snap: IssueSnapshot,
+  options: AnalyzeOptions,
+): Promise<IssueSnapshot> {
+  try {
+    const referencing = await searchReferencingPullRequests(
+      snap.owner,
+      snap.repo,
+      snap.number,
+      options,
+    );
+    return mergeReferencedPullRequests(snap, referencing);
+  } catch {
+    return snap;
+  }
+}
+
 export async function analyze(
   target: Target,
   options: AnalyzeOptions = {},
@@ -100,6 +142,12 @@ export async function analyze(
     target.kind === "issue"
       ? [await fetchSingleIssue(target.owner, target.repo, target.number, options)]
       : await fetchRepoIssues(target.owner, target.repo, options);
+
+  // PR-search claim detection first (the primary, most reliable claim signal): it catches fix PRs
+  // that the issue timeline never surfaces.
+  if (options.resolveReferencingPrs !== false) {
+    snapshots = await Promise.all(snapshots.map((s) => enrichWithReferencingPrs(s, options)));
+  }
 
   if (options.resolveMentions !== false) {
     snapshots = await Promise.all(snapshots.map((s) => enrichWithMentions(s, options)));

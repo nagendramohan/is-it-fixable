@@ -427,3 +427,68 @@ export async function fetchRepoTopLevelFiles(
     throw translateError(err, Boolean(token));
   }
 }
+
+/** A raw item from the REST issue-search API (used for PR-referencing search). */
+export interface RawSearchPrItem {
+  number: number;
+  state?: string | null; // "open" | "closed"
+  draft?: boolean | null;
+  pull_request?: { merged_at?: string | null } | null;
+}
+
+/**
+ * Pure: map a REST search result item (a PR referencing the issue) to a LinkedPullRequest with
+ * linkType "referenced". Returns null for non-PR items. Exported for tests.
+ */
+export function mapSearchPrItem(item: RawSearchPrItem): LinkedPullRequest | null {
+  if (!item.pull_request) return null;
+  const merged = Boolean(item.pull_request.merged_at);
+  const state: PullRequestState = merged ? "MERGED" : item.state === "closed" ? "CLOSED" : "OPEN";
+  return {
+    number: item.number,
+    state,
+    isDraft: Boolean(item.draft),
+    linkType: "referenced",
+  };
+}
+
+/**
+ * Find pull requests that REFERENCE an issue by searching for its number, catching fix PRs that the
+ * issue timeline does not surface (the common real-world case). Uses the REST issue-search API.
+ * Degrades gracefully (returns []) on search rate-limit or error so it never aborts a scan.
+ */
+export async function searchReferencingPullRequests(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  options: FetchOptions = {},
+): Promise<LinkedPullRequest[]> {
+  const token = options.token ?? process.env.GITHUB_TOKEN;
+  const q = encodeURIComponent(`repo:${owner}/${repo} ${issueNumber} type:pr`);
+  const url = `https://api.github.com/search/issues?q=${q}&per_page=50`;
+  const headers: Record<string, string> = {
+    "user-agent": "is-it-fixable",
+    accept: "application/vnd.github+json",
+  };
+  if (token) headers.authorization = `token ${token}`;
+
+  try {
+    const res = await fetch(url, { headers });
+    if (!res.ok) return []; // rate-limited / error -> degrade to timeline signals only
+    const data = (await res.json()) as { items?: RawSearchPrItem[] };
+    const out: LinkedPullRequest[] = [];
+    const seen = new Set<number>();
+    for (const item of data.items ?? []) {
+      // The search matches the number anywhere; exclude the issue itself.
+      if (item.number === issueNumber) continue;
+      const pr = mapSearchPrItem(item);
+      if (pr && !seen.has(pr.number)) {
+        seen.add(pr.number);
+        out.push(pr);
+      }
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
