@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-22
+
+### Added
+
+- **Error-signature claim detection.** Issue-number claim detection (v0.4) misses a bug that is
+  already known/tracked/attempted under a *different* issue number. For single-issue targets,
+  `is-it-fixable` now extracts the issue's error signature (Rust panics, assertions/overflows,
+  `Error:`/exception types, `file.ext:LINE` locations) and searches the repo for other issues/PRs
+  carrying it, warning when the same problem is tracked elsewhere. New module `src/signatures.ts`
+  (`extractErrorSignatures`, `signatureSearchQuery`) + `searchIssuesByText`/`mapSignatureMatches`.
+  Note: the signature must appear as readable text in the title/body — panics pasted as hexdumps or
+  only described in prose are (deliberately) not extracted, to avoid false positives.
+- **Repo openness gate.** Repo-health now distinguishes `CLOSED-TO-EXTERNAL` (a healthy sample of
+  recent human PRs with *zero* external contributors — the repo appears to restrict PR creation to
+  collaborators) from a genuine small-sample `UNKNOWN`, and excludes bots (dependabot, renovate,
+  …) from external-contribution stats.
+
+### Changed
+
+- Repo-health is now assessed for **single-issue** targets too, not just repo scans — so checking
+  one issue surfaces `LOW-EXTERNAL-MERGE` / `CLOSED-TO-EXTERNAL` before you invest. Disable with
+  `--no-repo-health`.
+
 ## [0.4.0] - 2026-08-22
 
 ### Fixed
@@ -90,7 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Already fixed on the default branch" detection (clone + build + reproduce).
 - GitHub Action packaging.
 
-[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/nagendramohan/is-it-fixable/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/nagendramohan/is-it-fixable/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/nagendramohan/is-it-fixable/compare/v0.2.0...v0.3.0

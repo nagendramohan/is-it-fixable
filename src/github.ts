@@ -353,7 +353,7 @@ const RECENT_PRS_QUERY = `
 query($owner: String!, $repo: String!, $first: Int!) {
   repository(owner: $owner, name: $repo) {
     pullRequests(first: $first, states: [MERGED, CLOSED], orderBy: {field: CREATED_AT, direction: DESC}) {
-      nodes { number state merged createdAt mergedAt authorAssociation }
+      nodes { number state merged createdAt mergedAt authorAssociation author { login } }
     }
   }
 }`;
@@ -364,6 +364,7 @@ interface RawRecentPr {
   createdAt?: string | null;
   mergedAt?: string | null;
   authorAssociation?: string | null;
+  author?: { login?: string | null } | null;
 }
 
 /** Pure: normalize a raw PR node into a RecentPr. Exported for tests. */
@@ -371,6 +372,7 @@ export function mapRecentPr(node: RawRecentPr): RecentPr {
   return {
     number: node.number,
     authorAssociation: normalizeAssociation(node.authorAssociation),
+    authorLogin: node.author?.login ?? null,
     merged: Boolean(node.merged),
     createdAt: node.createdAt ?? "",
     mergedAt: node.mergedAt ?? null,
@@ -488,6 +490,71 @@ export async function searchReferencingPullRequests(
       }
     }
     return out;
+  } catch {
+    return [];
+  }
+}
+
+/** A raw item from the REST issue-search API when searching by error signature. */
+export interface RawSignatureMatchItem {
+  number: number;
+  title?: string | null;
+  state?: string | null;
+  pull_request?: unknown;
+}
+
+/** A related issue/PR found to carry the same error signature. */
+export interface SignatureMatch {
+  number: number;
+  title: string;
+  state: string;
+  isPr: boolean;
+}
+
+/**
+ * Pure: map REST search items to SignatureMatch[], excluding the issue itself. Exported for tests.
+ */
+export function mapSignatureMatches(
+  items: readonly RawSignatureMatchItem[],
+  excludeNumber: number,
+): SignatureMatch[] {
+  const out: SignatureMatch[] = [];
+  const seen = new Set<number>();
+  for (const it of items) {
+    if (it.number === excludeNumber || seen.has(it.number)) continue;
+    seen.add(it.number);
+    out.push({
+      number: it.number,
+      title: it.title ?? "",
+      state: it.state === "closed" ? "CLOSED" : "OPEN",
+      isPr: it.pull_request != null,
+    });
+  }
+  return out;
+}
+
+/**
+ * Search a repo for OTHER issues/PRs matching a raw query string (an error-signature phrase).
+ * Used to detect a bug already known/tracked/attempted under a different issue number.
+ * Degrades to [] on rate-limit/error. `query` should already include the `repo:owner/repo` scope.
+ */
+export async function searchIssuesByText(
+  query: string,
+  excludeNumber: number,
+  options: FetchOptions = {},
+): Promise<SignatureMatch[]> {
+  const token = options.token ?? process.env.GITHUB_TOKEN;
+  const url = `https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=20`;
+  const headers: Record<string, string> = {
+    "user-agent": "is-it-fixable",
+    accept: "application/vnd.github+json",
+  };
+  if (token) headers.authorization = `token ${token}`;
+  try {
+    const res = await fetch(url, { headers });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { items?: RawSignatureMatchItem[] };
+    return mapSignatureMatches(data.items ?? [], excludeNumber);
   } catch {
     return [];
   }

@@ -28,6 +28,9 @@ export {
   type ResolvedRef,
   parseResolvedRefs,
   mapSearchPrItem,
+  mapSignatureMatches,
+  type SignatureMatch,
+  searchIssuesByText,
   resolveReferences,
   searchReferencingPullRequests,
 } from "./github.js";
@@ -39,7 +42,13 @@ export {
   type RepoHealth,
   type RepoHealthVerdict,
   repoHealthLine,
+  isBotLogin,
 } from "./repo-health.js";
+export {
+  extractErrorSignatures,
+  signatureSearchQuery,
+  type ErrorSignature,
+} from "./signatures.js";
 export {
   type BuildInfo,
   type BuildSystem,

@@ -20,6 +20,7 @@ export interface RenderOptions {
   useColor: boolean;
   build?: BuildInfo | undefined;
   repoHealth?: RepoHealth | undefined;
+  relatedByErrorSignature?: import("./github.js").SignatureMatch[] | undefined;
 }
 
 /** Render a single result as a compact, human-readable block. */
@@ -56,6 +57,18 @@ export function renderReport(
   }
   if (opts.repoHealth) {
     out.push(dim(repoHealthLine(opts.repoHealth), opts.useColor));
+    if (opts.repoHealth.verdict === "CLOSED-TO-EXTERNAL") {
+      out.push(`⚠  ${opts.repoHealth.evidence[0] ?? "This repo appears closed to external PRs."}`);
+    }
+  }
+  if (opts.relatedByErrorSignature && opts.relatedByErrorSignature.length > 0) {
+    const refs = opts.relatedByErrorSignature
+      .slice(0, 6)
+      .map((m) => `${m.isPr ? "PR " : ""}#${m.number} [${m.state}]`)
+      .join(", ");
+    out.push(
+      `⚠  Same error signature appears in ${refs} — this bug may already be known/tracked/attempted under another number. Verify before investing.`,
+    );
   }
   out.push(dim(`${results.length} open issue(s) analyzed · ${clean} look CLEAN`, opts.useColor));
   out.push("");
@@ -71,6 +84,7 @@ export interface JsonOutput {
   target: string;
   build?: BuildInfo;
   repoHealth?: RepoHealth;
+  relatedByErrorSignature?: import("./github.js").SignatureMatch[];
   results: Array<{
     number: number;
     title: string;
@@ -86,6 +100,7 @@ export function toJsonOutput(
   results: FixabilityResult[],
   build?: BuildInfo,
   repoHealth?: RepoHealth,
+  relatedByErrorSignature?: import("./github.js").SignatureMatch[],
 ): JsonOutput {
   const out: JsonOutput = {
     target,
@@ -102,5 +117,8 @@ export function toJsonOutput(
   };
   if (build) out.build = build;
   if (repoHealth) out.repoHealth = repoHealth;
+  if (relatedByErrorSignature && relatedByErrorSignature.length > 0) {
+    out.relatedByErrorSignature = relatedByErrorSignature;
+  }
   return out;
 }

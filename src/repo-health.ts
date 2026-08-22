@@ -9,13 +9,20 @@ import type { AuthorAssociation } from "./types.js";
 export interface RecentPr {
   number: number;
   authorAssociation: AuthorAssociation;
+  /** PR author's login, used to exclude bots (e.g. dependabot) from external-contribution stats. */
+  authorLogin?: string | null;
   merged: boolean;
   createdAt: string;
   /** ISO merge timestamp, or null if not merged. */
   mergedAt: string | null;
 }
 
-export type RepoHealthVerdict = "HEALTHY" | "SLOW" | "LOW-EXTERNAL-MERGE" | "UNKNOWN";
+export type RepoHealthVerdict =
+  | "HEALTHY"
+  | "SLOW"
+  | "LOW-EXTERNAL-MERGE"
+  | "CLOSED-TO-EXTERNAL"
+  | "UNKNOWN";
 
 export interface RepoHealth {
   verdict: RepoHealthVerdict;
@@ -35,9 +42,27 @@ export interface RepoHealth {
 const MAINTAINER: ReadonlySet<AuthorAssociation> = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 const MS_PER_DAY = 86_400_000;
 const SLOW_MEDIAN_DAYS = 30;
+// A repo needs at least this many sampled PRs before "zero external PRs" is a meaningful signal
+// (rather than just a tiny/quiet sample).
+const CLOSED_GATE_MIN_SAMPLE = 15;
 
+/** Bots (dependabot, renovate, etc.) carry a real authorAssociation but aren't human contributors. */
+export function isBotLogin(login: string | null | undefined): boolean {
+  if (!login) return false;
+  const l = login.toLowerCase();
+  return (
+    l.endsWith("[bot]") ||
+    l.endsWith("-bot") ||
+    l === "dependabot" ||
+    l === "renovate" ||
+    l === "renovate-bot" ||
+    l === "github-actions"
+  );
+}
+
+/** An external contribution: not a maintainer, and not a bot. */
 function isExternal(pr: RecentPr): boolean {
-  return !MAINTAINER.has(pr.authorAssociation);
+  return !MAINTAINER.has(pr.authorAssociation) && !isBotLogin(pr.authorLogin);
 }
 
 function median(nums: number[]): number | null {
@@ -72,10 +97,21 @@ export function assessRepoHealth(prs: readonly RecentPr[]): RepoHealth {
   const evidence: string[] = [];
 
   if (external.length === 0) {
-    verdict = "UNKNOWN";
-    evidence.push(
-      `No external (non-member) PRs found in the last ${prs.length} closed PRs — can't assess external-merge health.`,
-    );
+    // No external human PRs at all. If the sample is large enough, that's a strong signal the repo
+    // is effectively CLOSED to outside contributions (PR creation restricted to collaborators, e.g.
+    // Textualize/rich) — not merely "unknown". Below the gate it's a genuine small-sample unknown.
+    const humanNonExternal = prs.filter((p) => !isBotLogin(p.authorLogin)).length;
+    if (prs.length >= CLOSED_GATE_MIN_SAMPLE && humanNonExternal > 0) {
+      verdict = "CLOSED-TO-EXTERNAL";
+      evidence.push(
+        `All ${humanNonExternal} recent human PRs (of ${prs.length} sampled) are from members/collaborators — 0 external contributors. This repo appears closed to outside PRs; a fix here likely can't be landed by an external contributor.`,
+      );
+    } else {
+      verdict = "UNKNOWN";
+      evidence.push(
+        `No external (non-member) PRs found in the last ${prs.length} closed PRs — can't assess external-merge health.`,
+      );
+    }
   } else if (externalMerged.length === 0) {
     verdict = "LOW-EXTERNAL-MERGE";
     evidence.push(

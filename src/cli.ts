@@ -49,12 +49,12 @@ program
 
       if (opts.json) {
         process.stdout.write(
-          `${JSON.stringify(toJsonOutput(analysis.target, analysis.results, analysis.build, analysis.repoHealth), null, 2)}\n`,
+          `${JSON.stringify(toJsonOutput(analysis.target, analysis.results, analysis.build, analysis.repoHealth, analysis.relatedByErrorSignature), null, 2)}\n`,
         );
       } else {
         const useColor = process.stdout.isTTY === true && !process.env.NO_COLOR;
         process.stdout.write(
-          `${renderReport(analysis.target, analysis.results, { useColor, build: analysis.build, repoHealth: analysis.repoHealth })}\n`,
+          `${renderReport(analysis.target, analysis.results, { useColor, build: analysis.build, repoHealth: analysis.repoHealth, relatedByErrorSignature: analysis.relatedByErrorSignature })}\n`,
         );
       }
 

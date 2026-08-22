@@ -108,6 +108,13 @@ timeline cross-reference — so an issue that already has an open fix PR is corr
 rather than `CLEAN`. Maintainer sentiment is trusted only from `OWNER` / `MEMBER` / `COLLABORATOR`
 comments, so a random user arguing "this is by design" doesn't downgrade an issue.
 
+For a single-issue check it adds two "look before you leap" signals learned from real misfires:
+**error-signature cross-search** (extracts the issue's panic/assertion/exception/source-location
+signature and searches the repo for *other* issues/PRs carrying it, catching a bug already known or
+attempted under a different number), and a **repo openness / merge-velocity** warning
+(`LOW-EXTERNAL-MERGE` when a repo rarely merges outside PRs, `CLOSED-TO-EXTERNAL` when it appears to
+restrict PR creation to collaborators — bots excluded), so you don't craft a fix a repo won't take.
+
 It also detects **prose-only PR references** — a PR mentioned merely in a comment or the issue body
 (`#1195`, or a `…/pull/1195` URL) creates no structured timeline event, yet often marks a prior
 rejected attempt. These are weighted more cautiously than structural links: a mentioned

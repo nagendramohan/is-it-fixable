@@ -4,17 +4,20 @@
 import { type BuildInfo, detectBuildSystem } from "./build-system.js";
 import {
   type FetchOptions,
+  type SignatureMatch,
   fetchRecentPullRequests,
   fetchRepoIssues,
   fetchRepoTopLevelFiles,
   fetchSingleIssue,
   resolveReferences,
+  searchIssuesByText,
   searchReferencingPullRequests,
 } from "./github.js";
 import type { ResolvedRef } from "./github.js";
 import { extractReferences } from "./mentions.js";
 import { type RepoHealth, assessRepoHealth } from "./repo-health.js";
 import { assessIssue } from "./rubric.js";
+import { extractErrorSignatures, signatureSearchQuery } from "./signatures.js";
 import type { Target } from "./target.js";
 import type { FixabilityResult, IssueSnapshot, LinkedPullRequest } from "./types.js";
 
@@ -38,6 +41,11 @@ export interface AnalyzeOptions extends FetchOptions {
    * Default true.
    */
   resolveReferencingPrs?: boolean;
+  /**
+   * For single-issue targets, search for other issues/PRs carrying the same error signature to
+   * flag a likely-known/duplicate problem (one extra search call). Default true.
+   */
+  resolveSignatures?: boolean;
 }
 
 export interface AnalyzeResult {
@@ -46,6 +54,12 @@ export interface AnalyzeResult {
   build?: BuildInfo | undefined;
   /** Repo-level merge-velocity signal (repo targets only). Never alters per-issue verdicts. */
   repoHealth?: RepoHealth | undefined;
+  /**
+   * Other issues/PRs carrying the same error signature (single-issue targets only). A non-empty
+   * list means the bug may already be known/tracked/attempted under a different number — a strong
+   * "look before you leap" signal that issue-number claim detection alone would miss.
+   */
+  relatedByErrorSignature?: SignatureMatch[] | undefined;
 }
 
 /**
@@ -162,10 +176,25 @@ export async function analyze(
   }
 
   let repoHealth: RepoHealth | undefined;
-  if (target.kind === "repo" && options.repoHealth !== false) {
+  if (options.repoHealth !== false) {
+    // Assess for both repo scans and single-issue checks: when deciding whether to work on ONE
+    // issue, knowing the repo is CLOSED-TO-EXTERNAL (e.g. Textualize/rich) is exactly the signal
+    // that prevents wasted effort.
     const recentPrs = await fetchRecentPullRequests(target.owner, target.repo, options);
     repoHealth = assessRepoHealth(recentPrs);
   }
 
-  return { target: label, results, build, repoHealth };
+  // Error-signature cross-search (single-issue targets only — one extra search call, where the
+  // precision matters most). Detects a bug already known/attempted under a different issue number.
+  let relatedByErrorSignature: SignatureMatch[] | undefined;
+  if (target.kind === "issue" && options.resolveSignatures !== false && snapshots[0]) {
+    const snap = snapshots[0];
+    const sigs = extractErrorSignatures(snap.title, snap.body ?? "");
+    if (sigs[0]) {
+      const query = signatureSearchQuery(target.owner, target.repo, sigs[0]);
+      relatedByErrorSignature = await searchIssuesByText(query, snap.number, options);
+    }
+  }
+
+  return { target: label, results, build, repoHealth, relatedByErrorSignature };
 }

@@ -12,6 +12,51 @@ function pr(over: Partial<RecentPr> & Pick<RecentPr, "number">): RecentPr {
   };
 }
 
+describe("assessRepoHealth — CLOSED-TO-EXTERNAL gate (the rich lesson)", () => {
+  it("flags a repo whose recent human PRs are all members/collaborators (0 external)", () => {
+    // Model Textualize/rich: a healthy sample, but every human PR is COLLABORATOR/MEMBER + bots.
+    const prs: RecentPr[] = [];
+    for (let i = 1; i <= 12; i++) {
+      prs.push(pr({ number: i, authorAssociation: "COLLABORATOR", authorLogin: "KRRT7" }));
+    }
+    prs.push(pr({ number: 13, authorAssociation: "MEMBER", authorLogin: "willmcgugan" }));
+    // dependabot carries CONTRIBUTOR association but must NOT count as an external human PR.
+    for (let i = 14; i <= 18; i++) {
+      prs.push(pr({ number: i, authorAssociation: "CONTRIBUTOR", authorLogin: "dependabot[bot]" }));
+    }
+    const h = assessRepoHealth(prs);
+    expect(h.verdict).toBe("CLOSED-TO-EXTERNAL");
+    expect(h.externalTotalCount).toBe(0);
+    expect(h.evidence[0]).toMatch(/closed to outside PRs/i);
+  });
+
+  it("stays UNKNOWN (not CLOSED) when the sample is too small to conclude", () => {
+    const prs: RecentPr[] = [
+      pr({ number: 1, authorAssociation: "MEMBER", authorLogin: "maintainer" }),
+      pr({ number: 2, authorAssociation: "COLLABORATOR", authorLogin: "collab" }),
+    ];
+    expect(assessRepoHealth(prs).verdict).toBe("UNKNOWN");
+  });
+
+  it("a single genuine external human PR is enough to avoid the CLOSED verdict", () => {
+    const prs: RecentPr[] = [];
+    for (let i = 1; i <= 16; i++) {
+      prs.push(pr({ number: i, authorAssociation: "COLLABORATOR", authorLogin: "collab" }));
+    }
+    prs.push(
+      pr({
+        number: 99,
+        authorAssociation: "NONE",
+        authorLogin: "outsider",
+        merged: true,
+        createdAt: "2026-08-01T00:00:00Z",
+        mergedAt: "2026-08-02T00:00:00Z",
+      }),
+    );
+    expect(assessRepoHealth(prs).verdict).not.toBe("CLOSED-TO-EXTERNAL");
+  });
+});
+
 describe("assessRepoHealth", () => {
   it("HEALTHY: external PRs merged quickly", () => {
     const h = assessRepoHealth([
